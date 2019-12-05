@@ -124,7 +124,6 @@ if __name__ == '__main__':
 
     ql_utility_grids = flat_utilities
     ql_policy_grids = flat_policies
-    pdb.set_trace()
     # # new_shape = (gw.shape[0], gw.shape[1], gw.shape[2], end_iter)
     # # ql_utility_grids = flat_utilities.reshape(new_shape)
     # # ql_policy_grids = flat_policies.reshape(new_shape)
@@ -144,4 +143,5 @@ if __name__ == '__main__':
     # plt.suptitle('U_min= %.2f, U_max = %.2f, max iter %d' %(umin, umax, end_iter))
     plot_convergence(ql_utility_grids, ql_policy_grids)
     plt.show()
+    pdb.set_trace()
     # -----END Q learning -----#

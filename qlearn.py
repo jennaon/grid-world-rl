@@ -52,20 +52,23 @@ class QLearner:
             move_count = 0
             while True:
                 move_count +=1
-                # if i == 47:
-                #     print(next_state, self._stored_action)
-                next_state, reward, done = experience_func(self._stored_state,
-                                                      self._stored_action)
-                # if i == 47 and next_state == 517:
-                #     pdb.set_trace()
+                next_state, reward, done = experience_func(self._stored_state,self._stored_action)
+
+                # print(self._stored_state, self._stored_action, next_state)
+
                 #adjust your Q values based on your new experience
                 if next_state == None:
-                    self._Q[self._stored_state,:] += reward
-                    print('cul de sac :( )')
+                    self._Q[self._stored_state,self._stored_action] += reward
+                    self._Q[self._stored_state, 6] += self._learning_rate * reward
+                    # pdb.set_trace()
+                    # coooo =  gw.grid_indices_to_coordinates(self._stored_state)
+                    # pdb.set_trace()
+                    print('cul de sac :( @',gw.grid_indices_to_coordinates(self._stored_state))
                     break
-                elif move_count > 500:#you're probably stuck somewhere, which is equivalent of cul de sac
+                elif move_count > 2000:#you're probably stuck somewhere, which is equivalent of cul de sac
                     self._Q[self._stored_state, self._stored_action] += self._learning_rate * -100
-                    self._Q[next_state, :] += self._learning_rate * -100
+                    self._Q[next_state, :] += -100
+                    # pdb.set_trace()
                     print('!!stuck!')
                     break
                 else:
@@ -79,20 +82,22 @@ class QLearner:
                         #sarsa
                         r = reward_func(next_state, self._stored_action)#-self_Q[self._stored_state, self._stored_action]
                         self._Q[next_state,self._stored_action] += self._learning_rate * r
+                        print('completed in: %d steps'%move_count)
+                        # pdb.set_trace()
                         break
 
             policy, utility = self.get_policy_and_utility()
             all_policies[:, :, :, i] = policy.reshape((self.shape))
             all_utilities[:, :, :, i] = utility.reshape((self.shape))
 
-            if i > 20 and np.linalg.norm( (self._Q-Q_prev), ord=np.inf ) <self.eps :
+            if np.abs(np.linalg.norm( (self._Q-Q_prev))) <self.eps :
                 print('converged at iteration %d'%i)
                 policy, utility = self.get_policy_and_utility()
                 all_policies[:, :, :, i] = policy.reshape((self.shape))
                 all_utilities[:, :, :, i] = utility.reshape((self.shape))
                 return all_policies[:,:,:,:i], all_policies[:,:,:,:i], i
             # if np.mod(i,10) == 0:
-            print('iter %d, norm %.2f'% (i,np.linalg.norm( (self._Q-Q_prev), ord=np.inf )) )
+            print('iter %d' %i)
             Q_prev = np.copy(self._Q)
             # pdb.set_trace()
         print('loop broke by safety lock')
