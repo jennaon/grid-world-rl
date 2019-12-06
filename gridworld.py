@@ -2,7 +2,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import cv2
 import pdb
+import ast
 EPSILON = 0.1
+
 class GridWorldMDP:
     # np.seterr(divide='ignore', invalid='ignore')
 
@@ -18,6 +20,80 @@ class GridWorldMDP:
         (0, 0, 0)   #6 stay
     ]
     _num_actions = len(_direction_deltas)
+    '''
+    (0, -1, 0), #0 up
+    (0, 0, 1),  #1 right
+    (0, 1, 0),  #2 down
+    (0, 0, -1), #3 left
+    '''
+    landmark_lookup={
+    #(obstacle,edges)->observation index)
+    '(None, None)':0,
+    '(0, None)':1,
+    '(1, None)':2,
+    '(2, None)':3,
+    '(3, None)':4,
+    '(None, 0)':5,
+    '(None, 1)':6,
+    '(None, 2)':7,
+    '(None, 3)':8,
+    '(None, (0, 3))':9,
+    '(None, (0, 1))':10,
+    '(None, (1, 2))':11,
+    '(None, (2, 3))':12,
+    '(0, 1)':13,
+    '(0, 2)':14,
+    '(0, 3)':15,
+    '(0, (1, 2))':16,
+    '(0, (2, 3))':17,
+    '(1, 0)':18,
+    '(1, 2)':19,
+    '(1, 3)':20,
+    '(1, (0, 3))':21,
+    '(1, (2, 3))':22,
+    '(2, 0)':23,
+    '(2, 1)':24,
+    '(2, 3)':25,
+    '(2, (0, 3))':26,
+    '(2, (0, 1))':27,
+    '(3, 0)':28,
+    '(3, 1)':29,
+    '(3, 2)':30,
+    '(3, (0, 1))':31,
+    '(3, (1, 2))':32,
+    '((0, 1), None)':33,
+    '((0, 1), 2)':34,
+    '((0, 1), 3)':35,
+    '((0, 1), (2, 3))':36,
+    '((0, 2), None)':37,
+    '((0, 2), 1)':38,
+    '((0, 2), 3)':39,
+    '((0, 3), None)':40,
+    '((0, 3), 1)':41,
+    '((0, 3), 2)':42,
+    '((0, 3), (1, 2))':43,
+    '((1, 2), None)':44,
+    '((1, 2), 0)':45,
+    '((1, 2), 3)':46,
+    '((1, 2), (0, 3))':47,
+    '((1, 3), None)':48,
+    '((1, 3), 0)':49,
+    '((1, 3), 2)':50,
+    '((2, 3), None)':51,
+    '((2, 3), 0)':52,
+    '((2, 3), 1)':53,
+    '((2, 3), (0, 1))':54,
+    '((0, 1, 2), None)': 55,
+    '((0, 1, 2), 3)': 56,
+    '((0, 1, 3), None)': 57,
+    '((0, 1, 3), 2)': 58,
+    '((1, 2, 3), None)': 59,
+    '((1, 2, 3), 0)': 60,
+    '((0, 2, 3), None)': 61,
+    '((0, 2, 3), 1)': 62,
+    '((0, 1, 2, 3), None)': 63
+    }
+    landmark_idx_lookup = {v: k for k, v in landmark_lookup.items()}
 
     def __init__(self,
                  start,
@@ -35,6 +111,80 @@ class GridWorldMDP:
             no_action_probability,
             obstacle_mask
         )
+        self.num_obs = 64
+        self.meas_accuracy = 0.6
+
+        set0 = {'(None, None)',
+                '(0, None)',
+                '(1, None)',
+                '(2, None)',
+                '(3, None)',
+                '((0, 1), None)',
+                '((0, 2), None)',
+                '((0, 3), None)',
+                '((1, 2), None)',
+                '((1, 3), None)',
+                '((2, 3), None)',
+                '((0, 1, 2), None)',
+                '((0, 1, 3), None)',
+                '((1, 2, 3), None)',
+                '((0, 2, 3), None)',
+                '((0, 1, 2, 3), None)'}
+        set1 = {'(None, 0)', '(1, 0)','(2, 0)','(3, 0)',
+                '((1, 2), 0)',
+                '((1, 3), 0)',
+                '((2, 3), 0)',
+                '((1, 2, 3), 0)'}
+        set2 = {'(None, 1)',
+                '(0, 1)',
+                '(2, 1)',
+                '(3, 1)',
+                '((0, 2), 1)',
+                '((0, 3), 1)',
+                '((2, 3), 1)',
+                '((0, 2, 3), 1)'}
+
+        set3 = {'(None, 2)',
+                '(0, 2)',
+                '(1, 2)',
+                '(3, 2)',
+                '((0, 1), 2)',
+                '((0, 3), 2)',
+                '((1, 3), 2)',
+                '((0, 1, 3), 2)'}
+        set4 = {'(None, 3)',
+                '(0, 3)',
+                '(1, 3)',
+                '(2, 3)',
+                '((0, 1), 3)',
+                '((0, 2), 3)',
+                '((1, 2), 3)',
+                '((0, 1, 2), 3)'}
+
+        set5 = {'(None, (0, 1))',
+                '(2, (0, 1))',
+                '(3, (0, 1))',
+                '((2, 3), (0, 1))'}
+
+        set6 = {'(None, (1, 2))',
+                '(0, (1, 2))',
+                '(3, (1, 2))',
+                '((0, 3), (1, 2))'}
+
+        set7 = {'(None, (2, 3))',
+                '(0, (2, 3))',
+                '(1, (2, 3))',
+                '((0, 1), (2, 3))'}
+
+        set8 = {'(None, (0, 3))',
+                '(1, (0, 3))',
+                '(2, (0, 3))',
+                '((1, 2), (0, 3))'}
+        self.sets = [set0,set1, set2, set3, set4,set5, set6, set7, set8]
+
+        self._O = self._create_observation_matrix()
+        self.build_neighbor_dict()
+
 
     @property
     def shape(self):
@@ -255,17 +405,6 @@ class GridWorldMDP:
         T = np.zeros((H, M, N, self._num_actions, H, M, N))
 
         z, y, x = self.grid_indices_to_coordinates()
-    # _direction_deltas = [
-    #     #z, y, x
-    #     (0, -1, 0), #0
-    #     (0, 0, 1),  #1
-    #     (0, 1, 0),  #2
-    #     (0, 0, -1), #3
-    #     (1, 0, 0),  #4
-    #     (-1, 0, 0), #5
-    #     (0, 0, 0)   #6
-    # ]
-        # T[z0, y0, x0, :, z0, y0, x0 ] += no_action_probability
 
         # up, right, down, left, float, sink, stay
         for action, P in action_probabilities:
@@ -309,6 +448,63 @@ class GridWorldMDP:
         T[z[terminal_locs], y[terminal_locs], x[terminal_locs], :, :, :, :] = 0
         # pdb.set_trace()
         return T
+
+    def build_neighbor_dict(self):
+        z, y, x = self.grid_indices_to_coordinates()
+        H, M, N = self.shape
+        self.neighbor_dict = dict()
+        for (z0,(y0,x0)) in zip(z,zip(y,x)):
+            neighbors=[]
+            for delta in self._direction_deltas[:5]:
+                neighbor=np.array([z0,y0,x0]) + delta
+                if -1 in neighbor:
+                    continue
+                elif np.any(neighbor-self.shape>=0):
+                    continue
+                else:
+                    neighbors.append(neighbor)
+            key = (z0,y0,x0)
+            # pdb.set_trace()
+            self.neighbor_dict.update({str(key): neighbors})
+
+
+    def getObservation(self,state):
+        z,y,x = state
+        o_idx = np.random.choice(np.arange(self._O.shape[0]),p=self._O[:,z,y,x])
+        return o_idx
+
+    def similar_landmarks(self,key):
+        for i in range(len(self.sets)):
+            if str(key) in self.sets[i]:
+                return self.sets[i]
+
+    def _create_observation_matrix(self):
+
+        H, M, N = self.shape
+        # pdb.set_trace()
+        O = np.zeros((self.num_obs, H,M,N))
+        z, y, x = self.grid_indices_to_coordinates()
+        for (z0,(y0,x0)) in zip(z,zip(y,x)):
+            # print('state (%d, %d, %d)'%(z0, y0, x0))
+            #returns an array of neighbors that are obstacles. Empty array otherwise (len(returnval)==0
+            edges, obstacles = self._find_landmarks((z0,y0,x0))
+            key=(obstacles,edges)
+            candidates = self.similar_landmarks(key)
+            O[self.landmark_lookup[str(key)],z0,y0,x0] +=self.meas_accuracy
+            this_candidates = candidates.copy()
+            this_candidates.remove(str(key))
+            for this_candidate in this_candidates:
+                O[self.landmark_lookup[this_candidate],z0,y0,x0] += (1.0-self.meas_accuracy)/len(this_candidates)
+                # pdb.set_trace()
+
+        # pdb.set_trace()
+        #check
+        for (z0,(y0,x0)) in zip(z,zip(y,x)):
+            if not np.isclose(np.sum(O[:,z0,y0,x0]),1.0):
+                print('obs matrix error')
+
+        return O
+
 
     def _value_iteration(self, utility_grid, discount=1.0):
 
@@ -420,6 +616,56 @@ class GridWorldMDP:
             # pdb.set_trace()
         # pdb.set_trace()
         return np.max(newU)
+
+    def _find_landmarks(self,state):
+        #given the current state, return the position of the edges and obstacles
+        neigh=np.array(state) + self._direction_deltas[:4]
+        obstacles=[]; edges =[]
+        for i in range(len(neigh)):
+            this_neigh = neigh[i,:]
+            # print('neighbor:',this_neigh)
+            if len(this_neigh[this_neigh<0])>0:
+                edges.append(i)
+            else:
+                try:
+                    is_neigh_obstacle = self._obstacle_mask[neigh[i,0],neigh[i,1],neigh[i,2]]
+                except:
+                    edges.append(i)
+                    is_neigh_obstacle = False
+                if is_neigh_obstacle:
+                    obstacles.append(i)
+        if len(edges) == 0:
+            edges = None
+        elif len(edges) >1:
+            edges =tuple(edges)
+        else:
+            edges = edges[0]
+
+        if len(obstacles) ==0:
+            obstacles=None
+        elif len(obstacles) >1:
+            obstacles =tuple(obstacles)
+        else:
+            obstacles = obstacles[0]
+
+        return edges, obstacles
+
+    # def _is_on_the_edge(self,state):
+    #     '''
+    #     returns the index of found edges.
+    #     0->z
+    #     1->y
+    #     2->x
+    #     '''
+    #     H,M,N = self.shape
+    #     #do silly way
+    #     state = np.array(state)
+    #     found_edges =[]
+    #     isOutEdge =  np.divide(np.array(state),np.array([H,M,N]))
+    #     for i in range(len(state)):
+    #         if np.isclose(isOutEdge[i],1.0) or state[i] == 0:
+    #             found_edges.append(i)
+    #     return found_edges
 
 
     # def _calculate_utility(self, loc, discount, utility_grid):
@@ -545,12 +791,12 @@ class GridWorldMDP:
                 z,y,x = self.start
                 plt.plot(x,y, marker=r"$s$",ms = marker_size, mew=marker_edge_width, color='w')
 
-            tick_step_options = np.array([1, 2, 5, 10, 20, 50, 100])
-            tick_step = np.max(policy_grid.shape)/8
-            best_option = np.argmin(np.abs(np.log(tick_step) - np.log(tick_step_options)))
-            tick_step = tick_step_options[best_option]
-            plt.xticks(np.arange(0, this_policy_grid.shape[1] - 0.5, tick_step))
-            plt.yticks(np.arange(0, this_policy_grid.shape[0] - 0.5, tick_step))
+            # tick_step_options = np.array([1, 2, 5, 10, 20, 50, 100])
+            # tick_step = np.max(policy_grid.shape)/8
+            # best_option = np.argmin(np.abs(np.log(tick_step) - np.log(tick_step_options)))
+            # tick_step = tick_step_options[best_option]
+            # plt.xticks(np.arange(0, this_policy_grid.shape[1] - 0.5, tick_step))
+            # plt.yticks(np.arange(0, this_policy_grid.shape[0] - 0.5, tick_step))
             plt.xlim([-0.5, this_policy_grid.shape[0]-0.5])
             plt.xlim([-0.5, this_policy_grid.shape[1]-0.5])
         # pdb.set_trace()
